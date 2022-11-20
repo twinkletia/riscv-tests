@@ -1,5 +1,5 @@
 // See LICENSE for license details.
-
+#include "../../gloss/uart.h"
 #include <stdint.h>
 #include <string.h>
 #include <stdarg.h>
@@ -25,8 +25,8 @@ static uintptr_t syscall(uintptr_t which, uint64_t arg0, uint64_t arg1, uint64_t
   __sync_synchronize();
 
   tohost = (uintptr_t)magic_mem;
-  while (fromhost == 0)
-    ;
+  //while (fromhost == 0)
+  //  ;
   fromhost = 0;
 
   __sync_synchronize();
@@ -122,6 +122,17 @@ void _init(int cid, int nc)
   exit(ret);
 }
 
+int uart_putchar(int ch) {
+
+	while(UART_TX_GET_STAT_FULL())
+		asm volatile("nop");
+
+	*UART_TX_BUF = ch;
+	UART_TX_SET_EN(1);
+
+	return (unsigned int) ch;
+}
+
 #undef putchar
 int putchar(int ch)
 {
@@ -129,12 +140,12 @@ int putchar(int ch)
   static __thread int buflen = 0;
 
   buf[buflen++] = ch;
-
   if (ch == '\n' || buflen == sizeof(buf))
   {
     syscall(SYS_write, 1, (uintptr_t)buf, buflen);
     buflen = 0;
   }
+	uart_putchar(ch);
 
   return 0;
 }
